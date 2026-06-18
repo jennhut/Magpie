@@ -21,6 +21,7 @@ interface ArtifactState {
   updateArtifact: (id: string, updates: Partial<Artifact>) => void
   toggleAction: (id: string) => void
   removeArtifact: (id: string) => void
+  mergeArtifacts: (incoming: Artifact[]) => void
 }
 
 const makeId = () => crypto.randomUUID()
@@ -78,6 +79,13 @@ export const useArtifactStore = create<ArtifactState>()(
       },
       removeArtifact: (id) => {
         set((state) => ({ artifacts: state.artifacts.filter((artifact) => artifact.id !== id) }))
+      },
+      mergeArtifacts: (incoming) => {
+        set((state) => {
+          const existingById = new Map(state.artifacts.map((a) => [a.id, a]))
+          for (const a of incoming) existingById.set(a.id, a)
+          return { artifacts: Array.from(existingById.values()) }
+        })
       }
     }),
     { name: 'magpie-artifacts', storage: createJSONStorage(() => idbStorage) }

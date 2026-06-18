@@ -1,4 +1,4 @@
-﻿@import "tailwindcss";
+@import "tailwindcss";
 
 :root {
   color-scheme: dark;
@@ -104,4 +104,113 @@ button, input, textarea {
 
 .tag-button:hover {
   filter: brightness(1.18);
+}
+
+/* ── Light theme ───────────────────────────────────────────────────────────── */
+
+[data-theme="light"] {
+  color-scheme: light;
+  background: #faf8f5;
+
+  /* Remap zinc scale: dark end → warm near-white, light end → warm near-black */
+  --color-zinc-50:  #1a1210;
+  --color-zinc-100: #1a1210;
+  --color-zinc-200: #2c2420;
+  --color-zinc-300: #44342e;
+  --color-zinc-400: #6b5850;
+  --color-zinc-500: #897268;
+  --color-zinc-600: #a89080;
+  --color-zinc-700: #c8b8a8;
+  --color-zinc-800: #e0d6cc;
+  --color-zinc-900: #f0ebe4;
+  --color-zinc-950: #faf8f5;
+
+  /* Make text-white usable on light backgrounds */
+  --color-white: #1a1210;
+
+  /* Darken accent text/border colors so they show on light backgrounds */
+  --color-violet-100: #4c1d95;
+  --color-violet-200: #5b21b6;
+  --color-violet-300: #6d28d9;
+  --color-sky-100:    #075985;
+  --color-sky-200:    #0369a1;
+  --color-amber-100:  #78350f;
+  --color-amber-200:  #92400e;
+  --color-amber-300:  #b45309;
+  --color-emerald-100: #064e3b;
+  --color-emerald-200: #065f46;
+  --color-rose-200:   #9f1239;
+  --color-orange-50:  #7c2d12;
+  --color-orange-100: #9a3412;
+  --color-orange-200: #c2410c;
+}
+
+[data-theme="light"] body {
+  background:
+    linear-gradient(180deg, rgba(224, 214, 204, 0.5), rgba(250, 248, 245, 0.0) 260px),
+    #faf8f5;
+}
+
+[data-theme="light"] ::selection {
+  background: rgba(109, 40, 217, 0.18);
+  color: #1a1210;
+}
+
+[data-theme="light"] ::-webkit-scrollbar-track {
+  background: #f0ebe4;
+}
+
+[data-theme="light"] ::-webkit-scrollbar-thumb {
+  background: #c8b8a8;
+  border-color: #f0ebe4;
+}
+
+[data-theme="light"] ::-webkit-scrollbar-thumb:hover {
+  background: #a89080;
+}
+
+[data-theme="light"] .tag-button {
+  background: rgba(240, 235, 228, 0.7);
+  box-shadow: inset 0 1px 0 rgba(0, 0, 0, 0.04);
+}
+
+[data-theme="light"] .tag-button-heading {
+  border-color: rgba(100, 80, 70, 0.35);
+  color: #44342e;
+}
+
+[data-theme="light"] .tag-button-action {
+  border-color: rgba(91, 33, 182, 0.35);
+  background: rgba(91, 33, 182, 0.07);
+  color: #5b21b6;
+}
+
+[data-theme="light"] .tag-button-event {
+  border-color: rgba(3, 105, 161, 0.35);
+  background: rgba(3, 105, 161, 0.07);
+  color: #0369a1;
+}
+
+[data-theme="light"] .tag-button-decision {
+  border-color: rgba(146, 64, 14, 0.35);
+  background: rgba(146, 64, 14, 0.07);
+  color: #92400e;
+}
+
+[data-theme="light"] .tag-button-question {
+  border-color: rgba(6, 95, 70, 0.35);
+  background: rgba(6, 95, 70, 0.07);
+  color: #065f46;
+}
+
+[data-theme="light"] .tag-button-risk {
+  border-color: rgba(159, 18, 57, 0.35);
+  background: rgba(159, 18, 57, 0.07);
+  color: #9f1239;
+}
+
+[data-theme="light"] .tag-button-reminder {
+  border-color: rgba(194, 65, 12, 0.35);
+  background: rgba(194, 65, 12, 0.07);
+  color: #c2410c;
 }

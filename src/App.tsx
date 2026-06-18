@@ -1,11 +1,11 @@
 ﻿import { useEffect, useMemo, useRef, useState } from 'react'
-import { Archive, Bell, CalendarDays, CheckSquare, ChevronLeft, ChevronRight, CircleHelp, Download, FileJson, Flame, Heading1, Lightbulb, NotebookPen, Plus, Search, ShieldAlert, Trash2, X } from 'lucide-react'
+import { Archive, Bell, CalendarDays, CheckSquare, ChevronLeft, ChevronRight, CircleHelp, Download, FileJson, Flame, Heading1, Lightbulb, Moon, NotebookPen, Plus, Search, ShieldAlert, Sun, Trash2, Upload, X } from 'lucide-react'
 import { addDays, format, parseISO } from 'date-fns'
 import type { Artifact, ArtifactType, RouteId } from './types'
 import { useArtifactStore } from './store/artifactStore'
 import { useNotebookStore } from './store/notebookStore'
 import { artifactTypes, parseTaggedLines } from './utils/slashParser'
-import { downloadFile, exportJson, exportMarkdown } from './utils/exportUtils'
+import { downloadFile, exportJson, exportMarkdown, parseImportFile } from './utils/exportUtils'
 import { formatDate, formatDateTime } from './utils/dateUtils'
 import { useSlashCommand } from './hooks/useSlashCommand'
 import { Badge } from './components/ui/Badge'
@@ -46,6 +46,12 @@ export default function App() {
   const [route, setRoute] = useState<RouteId>('actions')
   const [search, setSearch] = useState('')
   const [selectedNotebookDate, setSelectedNotebookDate] = useState(todayKey())
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => (localStorage.getItem('magpie-theme') as 'dark' | 'light') ?? 'dark')
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme)
+    localStorage.setItem('magpie-theme', theme)
+  }, [theme])
   const pages = useNotebookStore((state) => state.pages)
   const entries = useNotebookStore((state) => state.entries)
   const dailyNotes = useNotebookStore((state) => state.dailyNotes)
@@ -96,14 +102,33 @@ export default function App() {
     setRoute(routeByType[result.type])
   }
 
+  const mergeArtifacts = useArtifactStore((state) => state.mergeArtifacts)
+  const mergeNotebook = useNotebookStore((state) => state.mergeNotebook)
+
   const runExport = (kind: 'json' | 'markdown') => {
     if (kind === 'json') downloadFile('magpie-export.json', exportJson(pages, entries, artifacts, dailyNotes), 'application/json')
     else downloadFile('magpie-export.md', exportMarkdown(pages, entries, artifacts, dailyNotes), 'text/markdown')
   }
 
+  const runImport = (file: File) => {
+    const reader = new FileReader()
+    reader.onload = (event) => {
+      try {
+        const payload = parseImportFile(event.target?.result as string)
+        const summary = `Import ${payload.artifacts.length} artifacts, ${Object.keys(payload.dailyNotes).length} daily notes, and ${payload.pages.length} pages into Magpie?\n\nExisting data will be kept. Imported items will be added or overwrite matching IDs.`
+        if (!window.confirm(summary)) return
+        mergeArtifacts(payload.artifacts)
+        mergeNotebook(payload.pages, payload.entries, payload.dailyNotes)
+      } catch (err) {
+        window.alert(`Import failed: ${err instanceof Error ? err.message : 'Unknown error'}`)
+      }
+    }
+    reader.readAsText(file)
+  }
+
   return (
     <div className="min-h-screen text-zinc-100">
-      <TopNav route={route} setRoute={setRoute} search={search} setSearch={setSearch} results={results} onResultClick={openSearchResult} onExport={runExport} />
+      <TopNav route={route} setRoute={setRoute} search={search} setSearch={setSearch} results={results} onResultClick={openSearchResult} onExport={runExport} onImport={runImport} theme={theme} onToggleTheme={() => setTheme((t) => t === 'dark' ? 'light' : 'dark')} />
       <main className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         {route === 'actions' && <ActionTracker onOpenSource={openSource} />}
         {route === 'notebook' && <NotebookView selectedDate={selectedNotebookDate} setSelectedDate={setSelectedNotebookDate} />}
@@ -121,8 +146,16 @@ type SearchResultItem =
   | { id: string; type: 'note'; label: string; excerpt: string; date: string }
   | { id: string; type: ArtifactType; label: string; excerpt: string; artifact: Artifact }
 
-function TopNav({ route, setRoute, search, setSearch, results, onResultClick, onExport }: { route: RouteId; setRoute: (route: RouteId) => void; search: string; setSearch: (value: string) => void; results: SearchResultItem[]; onResultClick: (result: SearchResultItem) => void; onExport: (kind: 'json' | 'markdown') => void }) {
+function TopNav({ route, setRoute, search, setSearch, results, onResultClick, onExport, onImport, theme, onToggleTheme }: { route: RouteId; setRoute: (route: RouteId) => void; search: string; setSearch: (value: string) => void; results: SearchResultItem[]; onResultClick: (result: SearchResultItem) => void; onExport: (kind: 'json' | 'markdown') => void; onImport: (file: File) => void; theme: 'dark' | 'light'; onToggleTheme: () => void }) {
   const [exportOpen, setExportOpen] = useState(false)
+  const importRef = useRef<HTMLInputElement>(null)
+
+  const handleImportChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (file) onImport(file)
+    event.target.value = ''
+  }
+
   return (
     <header className="sticky top-0 z-40 border-b border-zinc-800/80 bg-zinc-950/82 shadow-lg shadow-black/20 backdrop-blur-xl">
       <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-3 sm:px-6 lg:px-8">
@@ -136,6 +169,9 @@ function TopNav({ route, setRoute, search, setSearch, results, onResultClick, on
             {results.length > 0 && <SearchResults results={results} onResultClick={onResultClick} />}
           </div>
           <div className="relative flex gap-2">
+            <input ref={importRef} type="file" accept=".json" className="hidden" onChange={handleImportChange} />
+            <Button variant="ghost" icon={theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />} onClick={onToggleTheme}>{theme === 'dark' ? 'Light' : 'Dark'}</Button>
+            <Button variant="ghost" icon={<Upload size={16} />} onClick={() => importRef.current?.click()}>Import</Button>
             <Button variant="ghost" icon={<Download size={16} />} onClick={() => setExportOpen((value) => !value)}>Export</Button>
             {exportOpen && (
               <div className="absolute right-0 top-11 z-50 w-48 rounded-lg border border-zinc-800/90 bg-zinc-950/95 p-2 shadow-2xl shadow-black/40 backdrop-blur">
@@ -341,10 +377,14 @@ function DailyNoteEditor({ dateKey }: { dateKey: string }) {
     const lineStart = beforeCursor.lastIndexOf('\n') + 1
     const prefix = body.slice(lineStart, lineStart + 2) === '# ' ? '' : '# '
     const next = `${body.slice(0, lineStart)}${prefix}${body.slice(lineStart)}`
+    const savedScrollTop = target.scrollTop
+    const savedWindowY = window.scrollY
     syncText(next)
     window.setTimeout(() => {
-      target.focus()
+      target.focus({ preventScroll: true })
       target.selectionStart = target.selectionEnd = start + prefix.length
+      target.scrollTop = savedScrollTop
+      window.scrollTo(0, savedWindowY)
     }, 0)
   }
 
@@ -363,10 +403,14 @@ function DailyNoteEditor({ dateKey }: { dateKey: string }) {
     const next = `${body.slice(0, lineStart)}${command}${body.slice(lineEnd)}`
     const nextValue = next.endsWith(`/${type}`) ? `${next} ` : next
     const nextCursor = lineStart + (nextValue.slice(lineStart).match(/^[^\r\n]*/)?.[0].length ?? command.length)
+    const savedScrollTop = target.scrollTop
+    const savedWindowY = window.scrollY
     syncText(nextValue)
     window.setTimeout(() => {
-      target.focus()
+      target.focus({ preventScroll: true })
       target.selectionStart = target.selectionEnd = nextCursor
+      target.scrollTop = savedScrollTop
+      window.scrollTo(0, savedWindowY)
     }, 0)
   }
 

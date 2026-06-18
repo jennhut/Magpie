@@ -19,6 +19,7 @@ interface NotebookState {
   selectPage: (id: string) => void
   addEntry: (input: AddEntryInput) => Entry
   updateDailyNote: (key: string, body: string) => void
+  mergeNotebook: (pages: Page[], entries: Entry[], dailyNotes: Record<string, string>) => void
 }
 
 const makeId = () => crypto.randomUUID()
@@ -57,6 +58,19 @@ export const useNotebookStore = create<NotebookState>()(
       },
       updateDailyNote: (key, body) => {
         set((state) => ({ dailyNotes: { ...state.dailyNotes, [key]: body } }))
+      },
+      mergeNotebook: (incomingPages, incomingEntries, incomingDailyNotes) => {
+        set((state) => {
+          const pagesById = new Map(state.pages.map((p) => [p.id, p]))
+          for (const p of incomingPages) pagesById.set(p.id, p)
+          const entriesById = new Map(state.entries.map((e) => [e.id, e]))
+          for (const e of incomingEntries) entriesById.set(e.id, e)
+          return {
+            pages: Array.from(pagesById.values()),
+            entries: Array.from(entriesById.values()),
+            dailyNotes: { ...state.dailyNotes, ...incomingDailyNotes },
+          }
+        })
       }
     }),
     { name: 'magpie-notebook', storage: createJSONStorage(() => idbStorage) }
