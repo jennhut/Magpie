@@ -1,0 +1,107 @@
+﻿@import "tailwindcss";
+
+:root {
+  color-scheme: dark;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: #09090b;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background:
+    linear-gradient(180deg, rgba(39, 39, 42, 0.46), rgba(9, 9, 11, 0.98) 260px),
+    linear-gradient(90deg, rgba(24, 24, 27, 0.35), rgba(9, 9, 11, 0) 42%, rgba(24, 24, 27, 0.28)),
+    #09090b;
+}
+
+button, input, textarea {
+  font: inherit;
+}
+
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+::selection {
+  background: rgba(139, 92, 246, 0.35);
+  color: #fff;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: #09090b;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #27272a;
+  border: 2px solid #09090b;
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #3f3f46;
+}
+
+.tag-button {
+  border-width: 1px;
+  background: rgba(39, 39, 42, 0.42);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
+}
+
+.tag-button-heading {
+  border-color: rgba(113, 113, 122, 0.55);
+  color: #d4d4d8;
+}
+
+.tag-button-action {
+  border-color: rgba(167, 139, 250, 0.5);
+  background: rgba(167, 139, 250, 0.1);
+  color: #ddd6fe;
+}
+
+.tag-button-event {
+  border-color: rgba(56, 189, 248, 0.5);
+  background: rgba(56, 189, 248, 0.1);
+  color: #bae6fd;
+}
+
+.tag-button-decision {
+  border-color: rgba(251, 191, 36, 0.5);
+  background: rgba(251, 191, 36, 0.1);
+  color: #fde68a;
+}
+
+.tag-button-question {
+  border-color: rgba(52, 211, 153, 0.5);
+  background: rgba(52, 211, 153, 0.1);
+  color: #a7f3d0;
+}
+
+.tag-button-risk {
+  border-color: rgba(251, 113, 133, 0.5);
+  background: rgba(251, 113, 133, 0.1);
+  color: #fecdd3;
+}
+
+.tag-button-reminder {
+  border-color: rgba(251, 146, 60, 0.5);
+  background: rgba(251, 146, 60, 0.1);
+  color: #fed7aa;
+}
+
+.tag-button:hover {
+  filter: brightness(1.18);
+}
