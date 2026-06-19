@@ -8,6 +8,10 @@ export default defineConfig({
     port: 5200,
     strictPort: true,
   },
+  preview: {
+    port: 5200,
+    strictPort: true,
+  },
   plugins: [
     react(),
     tailwindcss(),
