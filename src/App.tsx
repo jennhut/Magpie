@@ -1,5 +1,5 @@
 ﻿import { useEffect, useMemo, useRef, useState } from 'react'
-import { Archive, Bell, CalendarDays, CheckSquare, ChevronLeft, ChevronRight, CircleHelp, Download, FileJson, Flame, Heading1, Lightbulb, Moon, NotebookPen, Plus, Search, ShieldAlert, Sun, Trash2, Upload, X } from 'lucide-react'
+import { Archive, Bell, CalendarDays, CheckSquare, ChevronLeft, ChevronRight, CircleHelp, Download, FileJson, Flame, Heading1, Lightbulb, Moon, NotebookPen, Plus, Search, ShieldAlert, SlidersHorizontal, Sun, Trash2, Upload, X } from 'lucide-react'
 import { addDays, format, parseISO } from 'date-fns'
 import type { Artifact, ArtifactType, RouteId } from './types'
 import { useArtifactStore } from './store/artifactStore'
@@ -8,6 +8,7 @@ import { artifactTypes, parseTaggedLines } from './utils/slashParser'
 import { downloadFile, exportJson, exportMarkdown, parseImportFile } from './utils/exportUtils'
 import { formatDate, formatDateTime } from './utils/dateUtils'
 import { useSlashCommand } from './hooks/useSlashCommand'
+import { useArtifactFilter, type ArtifactFilterState, type HeadingOption } from './hooks/useArtifactFilter'
 import { Badge } from './components/ui/Badge'
 import { Button } from './components/ui/Button'
 import { SearchBar } from './components/ui/SearchBar'
@@ -200,11 +201,18 @@ function ActionTracker({ onOpenSource }: { onOpenSource: (artifact: Artifact) =>
   const [draftOpen, setDraftOpen] = useState(false)
   const artifacts = useArtifactStore((state) => state.artifacts)
   const actions = artifacts.filter((artifact) => artifact.type === 'action')
-  const active = actions.filter((action) => !action.completedAt)
-  const done = actions.filter((action) => action.completedAt)
+  const { filters, filtered, availableHeadings, hasActiveFilters, activeFilterCount, toggleHeading, update, clear } = useArtifactFilter(actions)
+  const active = filtered.filter((action) => !action.completedAt)
+  const done = filtered.filter((action) => action.completedAt)
+  const totalActive = actions.filter((a) => !a.completedAt).length
+  const totalDone = actions.filter((a) => a.completedAt).length
+  const subtitle = hasActiveFilters
+    ? `${active.length} of ${totalActive} open · ${done.length} of ${totalDone} done`
+    : `${totalActive} open · ${totalDone} done`
   return (
     <section className="grid gap-5">
-      <PageHeader title="Action Tracker" subtitle={`${active.length} open, ${done.length} done`} action={<Button variant="primary" className="h-9 w-9 px-0" icon={<Plus size={16} />} title="Add action" aria-label="Add action" onClick={() => setDraftOpen(true)} />} />
+      <PageHeader title="Action Tracker" subtitle={subtitle} action={<Button variant="primary" className="h-9 w-9 px-0" icon={<Plus size={16} />} title="Add action" aria-label="Add action" onClick={() => setDraftOpen(true)} />} />
+      {actions.length > 0 && <FilterBar filters={filters} availableHeadings={availableHeadings} hasActiveFilters={hasActiveFilters} activeFilterCount={activeFilterCount} onToggleHeading={toggleHeading} onUpdate={update} onClear={clear} dateLabel="Due date" />}
       <ActionList title="Open" actions={active} onOpenSource={onOpenSource} draftOpen={draftOpen} onDraftClose={() => setDraftOpen(false)} />
       <details className="rounded-lg border border-zinc-800/90 bg-zinc-950/72 shadow-xl shadow-black/18" open={done.length > 0}>
         <summary className="cursor-pointer px-4 py-3 text-sm font-medium text-zinc-300">Done ({done.length})</summary>
@@ -452,15 +460,23 @@ function ReminderBanner({ reminders }: { reminders: Artifact[] }) {
 function ArtifactLog({ type, onOpenSource }: { type: ArtifactType; onOpenSource: (artifact: Artifact) => void }) {
   const [draftOpen, setDraftOpen] = useState(false)
   const artifacts = useArtifactStore((state) => state.artifacts).filter((artifact) => artifact.type === type)
+  const { filters, filtered, availableHeadings, hasActiveFilters, activeFilterCount, toggleHeading, update, clear } = useArtifactFilter(artifacts)
   const removeArtifact = useArtifactStore((state) => state.removeArtifact)
   const updateArtifact = useArtifactStore((state) => state.updateArtifact)
   const Icon = iconByType[type]
   const today = todayKey()
 
+  const dateLabelByType: Partial<Record<ArtifactType, string>> = { event: 'Event date', reminder: 'Reminder date' }
+  const dateLabel = dateLabelByType[type]
+
   const eventSort = (a: Artifact, b: Artifact) => (a.date ?? '9999-12-31').localeCompare(b.date ?? '9999-12-31') || a.createdAt.localeCompare(b.createdAt)
-  const upcomingEvents = type === 'event' ? artifacts.filter((artifact) => !artifact.date || artifact.date >= today).sort(eventSort) : []
-  const pastEvents = type === 'event' ? artifacts.filter((artifact) => artifact.date && artifact.date < today).sort(eventSort) : []
-  const visibleArtifacts = type === 'event' ? upcomingEvents : artifacts
+  const upcomingEvents = type === 'event' ? filtered.filter((artifact) => !artifact.date || artifact.date >= today).sort(eventSort) : []
+  const pastEvents = type === 'event' ? filtered.filter((artifact) => artifact.date && artifact.date < today).sort(eventSort) : []
+  const visibleArtifacts = type === 'event' ? upcomingEvents : filtered
+
+  const subtitle = hasActiveFilters
+    ? `${filtered.length} of ${artifacts.length} ${artifacts.length === 1 ? 'item' : 'items'}`
+    : `${artifacts.length} ${artifacts.length === 1 ? 'item' : 'items'}`
 
   const renderArtifact = (artifact: Artifact) => (
     <div key={artifact.id} className="flex items-start gap-3 border-b border-zinc-900 px-4 py-4 last:border-b-0">
@@ -485,9 +501,10 @@ function ArtifactLog({ type, onOpenSource }: { type: ArtifactType; onOpenSource:
     <section className="grid gap-5">
       <PageHeader
         title={`${type[0].toUpperCase()}${type.slice(1)} Log`}
-        subtitle={`${artifacts.length} ${artifacts.length === 1 ? 'item' : 'items'}`}
+        subtitle={subtitle}
         action={<Button variant="primary" className="h-9 w-9 px-0" icon={<Plus size={16} />} title={`Add ${type}`} aria-label={`Add ${type}`} onClick={() => setDraftOpen(true)} />}
       />
+      {artifacts.length > 0 && <FilterBar filters={filters} availableHeadings={availableHeadings} hasActiveFilters={hasActiveFilters} activeFilterCount={activeFilterCount} onToggleHeading={toggleHeading} onUpdate={update} onClear={clear} dateLabel={dateLabel} />}
       <div className="rounded-lg border border-zinc-800/90 bg-zinc-950/72 shadow-xl shadow-black/18">
         {draftOpen && <InlineArtifactDraft type={type} onClose={() => setDraftOpen(false)} />}
         {visibleArtifacts.length === 0 && !draftOpen ? <EmptyState label={`No ${type}s yet`} /> : visibleArtifacts.map(renderArtifact)}
@@ -551,6 +568,89 @@ function InlineArtifactDraft({ type, onClose }: { type: ArtifactType; onClose: (
         /> : <Button variant="ghost" className="h-8 w-8 px-0" title={`Add ${type} date`} aria-label={`Add ${type} date`} icon={<CalendarDays size={15} />} onClick={() => setDate(new Date().toISOString().slice(0, 10))} />
       )}
       <Button variant="ghost" className="h-8 w-8 px-0" title="Cancel" aria-label="Cancel" icon={<X size={15} />} onClick={onClose} />
+    </div>
+  )
+}
+
+function FilterBar({ filters, availableHeadings, hasActiveFilters, activeFilterCount, onToggleHeading, onUpdate, onClear, dateLabel }: {
+  filters: ArtifactFilterState
+  availableHeadings: HeadingOption[]
+  hasActiveFilters: boolean
+  activeFilterCount: number
+  onToggleHeading: (key: string) => void
+  onUpdate: (partial: Partial<ArtifactFilterState>) => void
+  onClear: () => void
+  dateLabel?: string
+}) {
+  const [open, setOpen] = useState(false)
+  const showHeadings = availableHeadings.length >= 2
+  const showDateSection = !!dateLabel
+
+  return (
+    <div className="rounded-lg border border-zinc-800/90 bg-zinc-950/72 shadow-xl shadow-black/18">
+      <div className="flex items-center gap-2 px-4 py-2">
+        <button
+          onClick={() => setOpen((o) => !o)}
+          className={`flex h-8 items-center gap-2 rounded-md px-3 text-sm transition ${open ? 'bg-zinc-800 text-white' : 'text-zinc-400 hover:bg-zinc-900 hover:text-zinc-100'}`}
+        >
+          <SlidersHorizontal size={14} />
+          <span>Filters</span>
+          {activeFilterCount > 0 && (
+            <span className="grid h-5 min-w-5 place-items-center rounded-full bg-violet-500 px-1 text-[10px] font-semibold text-white">
+              {activeFilterCount}
+            </span>
+          )}
+        </button>
+        {hasActiveFilters && (
+          <button onClick={onClear} className="flex items-center gap-1 text-xs text-zinc-500 transition hover:text-zinc-300">
+            <X size={12} /> Clear
+          </button>
+        )}
+      </div>
+
+      {open && (
+        <div className="grid gap-4 border-t border-zinc-900 px-4 py-4">
+          {showHeadings && (
+            <div className="grid gap-2">
+              <div className="text-xs font-medium uppercase tracking-wider text-zinc-500">Heading</div>
+              <div className="flex flex-wrap gap-2">
+                {availableHeadings.map((h) => {
+                  const isActive = filters.headings.includes(h.key)
+                  return (
+                    <button
+                      key={h.key}
+                      onClick={() => onToggleHeading(h.key)}
+                      className={`rounded-md border px-2.5 py-1 text-xs transition ${isActive ? 'border-violet-400/60 bg-violet-400/15 text-violet-100' : 'border-zinc-700/60 text-zinc-400 hover:border-zinc-600 hover:text-zinc-200'}`}
+                    >
+                      {h.label} <span className={isActive ? 'text-violet-300/70' : 'text-zinc-600'}>{h.count}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          <div className="grid gap-2">
+            <div className="text-xs font-medium uppercase tracking-wider text-zinc-500">Added</div>
+            <div className="flex flex-wrap items-center gap-2">
+              <input type="date" value={filters.addedFrom} onChange={(e) => onUpdate({ addedFrom: e.target.value })} className="h-8 rounded-md border border-zinc-800/90 bg-zinc-900/92 px-2 text-xs text-zinc-200 outline-none focus:border-violet-400/60 focus:ring-2 focus:ring-violet-400/10" aria-label="Added from" />
+              <span className="text-xs text-zinc-600">to</span>
+              <input type="date" value={filters.addedTo} onChange={(e) => onUpdate({ addedTo: e.target.value })} className="h-8 rounded-md border border-zinc-800/90 bg-zinc-900/92 px-2 text-xs text-zinc-200 outline-none focus:border-violet-400/60 focus:ring-2 focus:ring-violet-400/10" aria-label="Added to" />
+            </div>
+          </div>
+
+          {showDateSection && (
+            <div className="grid gap-2">
+              <div className="text-xs font-medium uppercase tracking-wider text-zinc-500">{dateLabel}</div>
+              <div className="flex flex-wrap items-center gap-2">
+                <input type="date" value={filters.dateFrom} onChange={(e) => onUpdate({ dateFrom: e.target.value })} className="h-8 rounded-md border border-zinc-800/90 bg-zinc-900/92 px-2 text-xs text-zinc-200 outline-none focus:border-violet-400/60 focus:ring-2 focus:ring-violet-400/10" aria-label={`${dateLabel} from`} />
+                <span className="text-xs text-zinc-600">to</span>
+                <input type="date" value={filters.dateTo} onChange={(e) => onUpdate({ dateTo: e.target.value })} className="h-8 rounded-md border border-zinc-800/90 bg-zinc-900/92 px-2 text-xs text-zinc-200 outline-none focus:border-violet-400/60 focus:ring-2 focus:ring-violet-400/10" aria-label={`${dateLabel} to`} />
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }
